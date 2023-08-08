@@ -102,16 +102,17 @@ function plot_benchmark(df_benchmarks::DataFrame, problem::String, input::String
         "problem" => x -> x .== problem,
         "input" => x -> x .== input,
     )
-    df_mean = sort!(
+    df_overview = sort!(
         combine(
             groupby(df_problem, "lang"),
             metric => mean,
+            nrow,
             renamecols=false
         ),
         metric,
     )
 
-    languages = df_mean[!, "lang"] |> unique
+    languages = df_overview[!, "lang"]
     language_ids = Dict{String,Int32}()
     for lang in languages
         if !haskey(language_ids, lang)
@@ -122,13 +123,19 @@ function plot_benchmark(df_benchmarks::DataFrame, problem::String, input::String
     xs = df_problem[!, "lang"] .|> lang -> language_ids[lang]
     ys = df_problem[!, metric]
 
+    language_counts = string.(df_overview[!, "nrow"])
+    xticks = map(
+        (lang, count)::Tuple{String,String} -> "$lang (n=$count)",
+        zip(languages, language_counts)
+    )
+
     figure = Figure()
     axis = Axis(
         figure[1, 1],
         title=df_problem[1, "problem"] * " " * df_problem[1, "input"],
         ylabel=metric,
         xlabel="Languages",
-        xticks=(0:length(languages)-1, languages),
+        xticks=(0:length(xticks)-1, xticks),
         xticklabelrotation=45.0
     )
     boxplot!(axis, xs, ys)
