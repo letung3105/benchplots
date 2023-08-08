@@ -33,37 +33,29 @@ function parse_number_from_pattern(type::Type{T}, pattern::Regex, input::String)
 end
 
 function crawl_languages_from_home_page(home_html::HTMLDocument)::Vector{NamedPath}
-    selector = sel"body aside:first-of-type ul > li > a"
-    lang_addresses = eachmatch(selector, home_html.root)
+    lang_addresses = eachmatch(sel"body aside:first-of-type ul > li > a", home_html.root)
     map(parse_address_simple, lang_addresses)
 end
 
 function crawl_problems_from_home_page(home_html::HTMLDocument)::Vector{NamedPath}
-    selector = sel"body aside:last-of-type ul > li > a"
-    problem_addresses = eachmatch(selector, home_html.root)
+    problem_addresses = eachmatch(sel"body aside:last-of-type ul > li > a", home_html.root)
     map(parse_address_simple, problem_addresses)
 end
 
 function crawl_benchmarks_from_problem_page(problem_html::HTMLDocument)
-    selector_benchmarks_container = sel"body aside:first-of-type + div > div:last-of-type > div"
-    selector_benchmark_title = sel"h3"
-    selector_benchmark_table = sel"table"
-    selector_benchmark_table_head = sel"tr > th"
-    selector_benchmark_table_rows = sel"tbody > tr"
-    selector_benchmark_table_data = sel"td"
     input_size_regex = r"Input: (.+)"
     benchmarks = Vector{Dict{String,String}}()
-    for container in eachmatch(selector_benchmarks_container, problem_html.root)
-        titles = eachmatch(selector_benchmark_title, container)
+    for container in eachmatch(sel"body aside:first-of-type + div > div:last-of-type > div", problem_html.root)
+        titles = eachmatch(sel"h3", container)
         inputs = match(input_size_regex, parse_text(titles[1]))
-        tables = eachmatch(selector_benchmark_table, container)
-        table_rows = eachmatch(selector_benchmark_table_rows, tables[1])
-        table_head = eachmatch(selector_benchmark_table_head, tables[1])
+        tables = eachmatch(sel"table", container)
+        table_rows = eachmatch(sel"tbody > tr", tables[1])
+        table_head = eachmatch(sel"tr > th", tables[1])
         # Go through each benchmark
         for table_row in table_rows
             benchmark = Dict{String,String}()
             benchmark["input"] = inputs[1]
-            table_data = eachmatch(selector_benchmark_table_data, table_row)
+            table_data = eachmatch(sel"td", table_row)
             if (length(table_data) != length(table_head))
                 continue
             end
@@ -80,11 +72,8 @@ function crawl_benchmarks_from_problem_page(problem_html::HTMLDocument)
 end
 
 function get_benchmarks_dataframe(benchmarks::Vector{Dict{String,String}})::DataFrame
-    pattern_milliseconds = r"((\d+)(\.\d+)?)ms"
-    pattern_megabytes = r"((\d+)(\.\d+)?)MB"
-
-    parse_milliseconds = x -> parse_number_from_pattern(Float32, pattern_milliseconds, x)
-    parse_megabytes = x -> parse_number_from_pattern(Float32, pattern_megabytes, x)
+    parse_milliseconds = x -> parse_number_from_pattern(Float32, r"((\d+)(\.\d+)?)ms", x)
+    parse_megabytes = x -> parse_number_from_pattern(Float32, r"((\d+)(\.\d+)?)MB", x)
 
     df = DataFrame(map(
         col_name -> col_name => map(result -> get(result, col_name, ""), benchmarks),
