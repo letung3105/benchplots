@@ -157,8 +157,10 @@ let df_benchmarks = (
         |> collect
         |> get_benchmarks_dataframe
     )
-    for (problem, input) in keys(groupby(df_benchmarks, ["problem", "input"]))
-        save("./images/cpu/$(problem)_$input.png", plot_benchmark(df_benchmarks, problem, input, "time"))
-        save("./images/mem/$(problem)_$input.png", plot_benchmark(df_benchmarks, problem, input, "peak-mem"))
+    for k in keys(groupby(df_benchmarks, ["problem", "input"]))
+        problem = replace(k.problem, isspace => "-")
+        input = replace(k.input, isspace => "-")
+        save("./images/cpu/$(problem)_$(input).png", plot_benchmark(df_benchmarks, k.problem, k.input, "time"))
+        save("./images/mem/$(problem)_$(input).png", plot_benchmark(df_benchmarks, k.problem, k.input, "peak-mem"))
     end
 end
