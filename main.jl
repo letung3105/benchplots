@@ -1,4 +1,4 @@
-using CairoMakie, Cascadia, DataFrames, Gumbo, Statistics, Unitful
+using CairoMakie, Cascadia, DataFrames, Gumbo, Statistics
 
 import Dates, HTTP
 
@@ -157,10 +157,30 @@ let df_benchmarks = (
         |> collect
         |> get_benchmarks_dataframe
     )
+    img_cpu_paths = Vector{String}()
+    img_mem_paths = Vector{String}()
     for k in keys(groupby(df_benchmarks, ["problem", "input"]))
         problem = replace(k.problem, isspace => "-")
         input = replace(k.input, isspace => "-")
-        save("./images/cpu/$(problem)_$(input).png", plot_benchmark(df_benchmarks, k.problem, k.input, "time"))
-        save("./images/mem/$(problem)_$(input).png", plot_benchmark(df_benchmarks, k.problem, k.input, "peak-mem"))
+        path_cpu = "./images/cpu/$(problem)_$(input).png"
+        path_mem = "./images/mem/$(problem)_$(input).png"
+        save(path_cpu, plot_benchmark(df_benchmarks, k.problem, k.input, "time"))
+        save(path_mem, plot_benchmark(df_benchmarks, k.problem, k.input, "peak-mem"))
+        push!(img_cpu_paths, path_cpu)
+        push!(img_mem_paths, path_mem)
     end
+    md_cpu_images = join(map(x -> "![$x]($x)", img_cpu_paths), "\n")
+    md_mem_images = join(map(x -> "![$x]($x)", img_mem_paths), "\n")
+    md_content = join(
+        [
+            "# Benchplots",
+            "Plots were made using data crawled from [Programming Language and Compiler Benchmarks](https://programming-language-benchmarks.vercel.app/zig)",
+            "## cpu",
+            md_cpu_images,
+            "## mem",
+            md_mem_images
+        ],
+        "\n"
+    )
+    write("README.md", md_content)
 end
